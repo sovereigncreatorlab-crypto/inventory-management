@@ -55,7 +55,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
-          locationId: user.locationId,
+          locationId: user.locationId ?? undefined,
           locationName: user.location?.name,
         }
       }
@@ -81,8 +81,8 @@ export const authOptions: NextAuthOptions = {
           ...session.user,
           id: token.id as string,
           role: token.role as string,
-          locationId: token.locationId as string,
-          locationName: token.locationName as string,
+          locationId: token.locationId as string | undefined,
+          locationName: token.locationName as string | undefined,
         }
       }
     }
