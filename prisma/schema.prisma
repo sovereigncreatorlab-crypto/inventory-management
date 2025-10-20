@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  role          Role      @default(STAFF)
+  locationId    String?
+  location      Location? @relation(fields: [locationId], references: [id])
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  transactions  Transaction[]
+  adjustments   StockAdjustment[]
+  activities    ActivityLog[]
+}
+
+enum Role {
+  ADMIN
+  ACCOUNTANT
+  LOCATION_MANAGER
+  WAREHOUSE_STAFF
+  SALES_STAFF
+  STAFF
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  sku           String    @unique
+  name          String
+  description   String?
+  category      String?
+  tags          String[]
+  cost          Float
+  price         Float
+  unit          String    @default("piece")
+  imageUrl      String?
+  qrCode        String?   @unique
+  barcode       String?
+  minStock      Int       @default(10)
+  maxStock      Int?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  inventory     Inventory[]
+  transactions  TransactionItem[]
+  adjustments   StockAdjustment[]
+}
+
+model Location {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  type          LocationType
+  address       String?
+  phone         String?
+  email         String?
+  managerId     String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  inventory     Inventory[]
+  users         User[]
+  fromTransfers Transaction[] @relation("FromLocation")
+  toTransfers   Transaction[] @relation("ToLocation")
+  adjustments   StockAdjustment[]
+}
+
+enum LocationType {
+  WAREHOUSE
+  STORE
+  OUTLET
+}
+
+model Inventory {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  locationId    String
+  location      Location  @relation(fields: [locationId], references: [id])
+  quantity      Int       @default(0)
+  reserved      Int       @default(0)
+  available     Int       @default(0)
+  lastRestocked DateTime?
+  lastSold      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@unique([productId, locationId])
+  @@index([productId])
+  @@index([locationId])
+}
+
+model Transaction {
+  id              String          @id @default(cuid())
+  type            TransactionType
+  referenceNo     String          @unique @default(cuid())
+  fromLocationId  String?
+  fromLocation    Location?       @relation("FromLocation", fields: [fromLocationId], references: [id])
+  toLocationId    String?
+  toLocation      Location?       @relation("ToLocation", fields: [toLocationId], references: [id])
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  status          TransactionStatus @default(PENDING)
+  notes           String?
+  totalCost       Float?
+  totalPrice      Float?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  completedAt     DateTime?
+  
+  items           TransactionItem[]
+  activities      ActivityLog[]
+}
+
+enum TransactionType {
+  RECEIVING
+  CHECKOUT
+  TRANSFER
+  RETURN
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+model TransactionItem {
+  id            String      @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+  cost          Float
+  price         Float
+  createdAt     DateTime    @default(now())
+  
+  @@index([transactionId])
+  @@index([productId])
+}
+
+model StockAdjustment {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  locationId    String
+  location      Location  @relation(fields: [locationId], references: [id])
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  type          AdjustmentType
+  quantity      Int
+  reason        String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  
+  @@index([productId])
+  @@index([locationId])
+}
+
+enum AdjustmentType {
+  DAMAGE
+  LOSS
+  FOUND
+  CORRECTION
+  EXPIRY
+}
+
+model ActivityLog {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  action        String
+  entity        String
+  entityId      String?
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Alert {
+  id            String    @id @default(cuid())
+  type          AlertType
+  severity      AlertSeverity
+  title         String
+  message       String
+  productId     String?
+  locationId    String?
+  resolved      Boolean   @default(false)
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  createdAt     DateTime  @default(now())
+  
+  @@index([type, resolved])
+  @@index([createdAt])
+}
+
+enum AlertType {
+  LOW_STOCK
+  OUT_OF_STOCK
+  OVERSTOCK
+  EXPIRY_WARNING
+  SYSTEM
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
