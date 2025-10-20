@@ -10,7 +10,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Welcome back, {session?.user?.name || 'User'}!</h1>
-        <p className="text-gray-500 mt-1">Here's what's happening with your inventory today.</p>
+        <p className="text-gray-500 mt-1">Here&apos;s what&apos;s happening with your inventory today.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
